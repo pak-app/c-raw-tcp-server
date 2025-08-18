@@ -51,5 +51,36 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
+# ---- CMake generated files ----
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+
 # debug information files
 *.dwo
+
+# ---- Build directories ----
+build/
+out/
+bin/
+obj/
+
+# ---- Logs and temp files ----
+*.log
+*.tmp
+
+# ---- IDE / Editor specific ----
+.vscode/
+.idea/
+*.swp
+*~
+
+# ---- OS-specific ----
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
