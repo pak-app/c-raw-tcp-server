@@ -4,4 +4,12 @@ project(c_http_web_server C)
 
 set(CMAKE_C_STANDARD 99)
 
-add_executable(c_http_web_server src/main.c)
+# Add include directory for headers
+include_directories(include)
+
+# List source files
+set(SOURCES
+    src/*.c
+)
+
+add_executable(c_http_web_server ${SOURCES})
