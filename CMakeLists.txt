@@ -10,7 +10,7 @@ include_directories(include)
 # List source files
 set(SOURCES
     src/main.c
-    src/tool.c
+    src/tcp.c
 )
 
 add_executable(c_http_web_server ${SOURCES})
