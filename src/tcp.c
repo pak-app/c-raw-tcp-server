@@ -102,24 +102,26 @@ void tcpServer(char *address, int port, int bufSize){
 
     printf("Server listening on port %d...\n", port);
 
-    // 4. Accept client
-    if ((client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &addr_len)) < 0) {
-        perror("accept failed");
-        close(server_fd);
-        exit(EXIT_FAILURE);
+        // 4. Accept clients forever
+    while (1) {
+        client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &addr_len);
+        if (client_fd < 0) {
+            perror("accept failed");
+            continue;  // continue accepting next client
+        }
+
+        printf("Client connected!\n");
+
+        // 5. Communicate
+        int bytes = read(client_fd, buffer, bufSize);
+        buffer[bytes] = '\0';
+        printf("Received: %s\n", buffer);
+
+        char *reply = "Hello from server\n";
+        send(client_fd, reply, strlen(reply), 0);
+
+        close(client_fd);  // close client socket
     }
-    printf("Client connected!\n");
-
-    // 5. Communicate
-    int bytes = read(client_fd, buffer, bufSize);
-    buffer[bytes] = '\0';
-    printf("Received: %s\n", buffer);
-
-    char *reply = "Hello from server";
-    send(client_fd, reply, strlen(reply), 0);
-
-    // Cleanup
-    close(client_fd);
     close(server_fd);
 
 
