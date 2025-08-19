@@ -67,7 +67,7 @@ void readLines(char *fileName)
 }
 
 
-void tcpServer(char *address, int port, int bufSize)
+void server(char *address, int port, int bufSize)
 {
 
     if (address == NULL)
@@ -137,26 +137,31 @@ void tcpServer(char *address, int port, int bufSize)
 
         if (pid_number == 0) {
 
-            
             // Convert IP to string
             char client_ip_v4[INET_ADDRSTRLEN]; // buffer for IPv4 string
             inet_ntop(AF_INET, &(client_addr.sin_addr), client_ip_v4, INET_ADDRSTRLEN);
             
     
-            printf("Client %s connected!\n", client_ip_v4);
+            printf("Client %s connected!\n", client_ip_v4); // Log connected client
+
             while (1)
             {
-    
+                // recieve number of bytes of data we get from cleint
+                // if the bytes variable is 0 it means the client disconnected
+                // if it is more than 0, it received a data
                 int bytes = recv(client_fd, buffer, bufSize - 1, 0);
+                
+                // handler cleint disconnection
                 if (bytes <= 0)
                 {
                     close(client_fd);
                     printf("Client disconnected %s", client_ip_v4);
                     break;
                 }
-                char *reply = "Hello from server\n";
-                // send(client_fd, reply, strlen(reply), 0);
-                if (send(client_fd, reply, strlen(reply), 0) < 0)
+
+                char *reply = "Hello from server\n";    // response message
+                ssize_t send_status = send(client_fd, reply, strlen(reply), 0);
+                if ( send_status < 0)
                 {
                     printf("Send operation failed and disconnect cleint %d", client_fd);
                     close(client_fd);

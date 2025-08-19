@@ -25,7 +25,7 @@ void	parent_routine(pid_t pid, int *nb)
 int main()
 {
 
-    tcpServer("localhost", 8080, 1024);
+    server("localhost", 8080, 1024);
 
 	return 0;
 }
