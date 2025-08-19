@@ -6,6 +6,7 @@
 #include <unistd.h>    // close()
 #include <arpa/inet.h> // sockaddr_in, inet_addr
 
+
 void readData(char *fileName)
 {
     FILE *fptr;
@@ -65,6 +66,7 @@ void readLines(char *fileName)
     fclose(fptr);
 }
 
+
 void tcpServer(char *address, int port, int bufSize)
 {
 
@@ -78,6 +80,8 @@ void tcpServer(char *address, int port, int bufSize)
     int server_fd, client_fd;
     struct sockaddr_in server_addr, client_addr;
     char buffer[bufSize];
+    pid_t pid_number;
+
     socklen_t addr_len = sizeof(client_addr);
 
     // 1. Create socket
@@ -108,35 +112,59 @@ void tcpServer(char *address, int port, int bufSize)
     }
 
     printf("Server listening on port %d...\n", port);
-    
+
     // Handle the clients connect.
-    while(1) {
+
+    
+    while (1)
+    {
         client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &addr_len);
+        
         if (client_fd < 0)
         {
             perror("accept failed");
             close(client_fd); // close client socket
         }
-    
-        printf("Client connected!\n");
-        while (1)
-        {
 
-            int bytes = recv(client_fd, buffer, bufSize - 1, 0);
-            if (bytes <= 0) {
-                close(client_fd);
-                break;
-            }
-            char *reply = "Hello from server\n";
-            // send(client_fd, reply, strlen(reply), 0);
-            if (send(client_fd, reply, strlen(reply), 0) < 0) {
-                printf("Send operation failed and disconnect cleint %d", client_fd);
-                close(client_fd);
-            }
-            buffer[bytes] = '\0';
-            printf("Received: %s\n", buffer);
+        pid_number = fork();
+        
+        if (pid_number < 0)
+        {
+            perror("Fork operation failed.");
+            close(server_fd);
+            return;
         }
-        // close(client_fd); // close client socket
+
+        if (pid_number == 0) {
+
+            
+            // Convert IP to string
+            char client_ip_v4[INET_ADDRSTRLEN]; // buffer for IPv4 string
+            inet_ntop(AF_INET, &(client_addr.sin_addr), client_ip_v4, INET_ADDRSTRLEN);
+            
+    
+            printf("Client %s connected!\n", client_ip_v4);
+            while (1)
+            {
+    
+                int bytes = recv(client_fd, buffer, bufSize - 1, 0);
+                if (bytes <= 0)
+                {
+                    close(client_fd);
+                    printf("Client disconnected %s", client_ip_v4);
+                    break;
+                }
+                char *reply = "Hello from server\n";
+                // send(client_fd, reply, strlen(reply), 0);
+                if (send(client_fd, reply, strlen(reply), 0) < 0)
+                {
+                    printf("Send operation failed and disconnect cleint %d", client_fd);
+                    close(client_fd);
+                }
+                buffer[bytes] = '\0';
+                printf("Received: %s\n", buffer);
+            }
+        }
     }
 
     close(server_fd);
