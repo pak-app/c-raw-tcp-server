@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(c_http_web_server C)
+project(c_raw_tcp_server C)
 
 set(CMAKE_C_STANDARD 99)
 
@@ -14,4 +14,4 @@ set(SOURCES
     src/tool.c
 )
 
-add_executable(c_http_web_server ${SOURCES})
+add_executable(server ${SOURCES})

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name of your executable (as defined in CMakeLists.txt -> add_executable)
-APP_NAME="c_http_web_server"
+APP_NAME="server"
 
 # Build directory
 BUILD_DIR="build"
