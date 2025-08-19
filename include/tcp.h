@@ -1,8 +1,5 @@
-#ifndef TOOL_H
-#define TOOL_H
-
-void readData(char *fileName);
-void readLines(char *fileName);
+#ifndef TCP_H
+#define TCP_H
 
 void server(char *address, int port, int bufSize);
 
