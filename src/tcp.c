@@ -3,6 +3,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>      // sockaddr_in, inet_addr
+#include <signal.h>         // signal
+#include <sys/wait.h>
 
 #define BUF_SIZE 1024       // default buffer size
 #define PORT 8080           // default port number
@@ -39,6 +41,19 @@ void bind_listen_server(int server_fd, struct sockaddr_in *server_addr, int port
     printf("Server listening on port %d...\n", port);
 }
 
+static void clean_up_zombies(int signo) {
+    int status;
+    pid_t pid;
+
+    // Keep reaping until no more finished children
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+        // Use write() instead of printf() in signal handler
+        char buf[100];
+        int len = snprintf(buf, sizeof(buf), "Reaped child PID=%d\n", pid);
+        write(STDOUT_FILENO, buf, len);
+    }
+}
+
 static void convert_binary_ip_to_v4(struct sockaddr_in *client_addr, char *buffer, size_t buffer_len) {
     inet_ntop(AF_INET, &(client_addr->sin_addr), buffer, buffer_len);
 }
@@ -55,7 +70,6 @@ void client_handler(int server_fd, int client_fd, struct sockaddr_in *client_add
     if (client_fd < 0)
     {
         perror("accept failed");
-        close(client_fd); // close client socket
     }
 
     pid_num = fork();
@@ -63,7 +77,6 @@ void client_handler(int server_fd, int client_fd, struct sockaddr_in *client_add
     if (pid_num < 0)
     {
         perror("Fork operation failed.");
-        close(server_fd);
         return;
     }
 
@@ -73,6 +86,8 @@ void client_handler(int server_fd, int client_fd, struct sockaddr_in *client_add
         // Convert IP to string
         char client_ip_v4[INET_ADDRSTRLEN]; // buffer for IPv4 string
         convert_binary_ip_to_v4(client_addr, client_ip_v4, sizeof(client_ip_v4));
+
+        close(server_fd);   // in child process there is no need to listening
 
         printf("Client %s connected!\n", client_ip_v4); // Log connected client
 
@@ -97,10 +112,15 @@ void client_handler(int server_fd, int client_fd, struct sockaddr_in *client_add
             {
                 printf("Send operation failed and disconnect cleint %d", client_fd);
                 close(client_fd);
+                break;
             }
             buffer[bytes] = '\0';
             printf("Received: %s\n", buffer);
         }
+        exit(0);
+    }
+    else {
+        close(client_fd);   // in parent process there is no need to listen for client
     }
 }
 
@@ -116,6 +136,10 @@ void server(char *address, int port, int buff_size)
 
     int server_fd, client_fd;
     struct sockaddr_in server_addr, client_addr;
+
+
+    // Setup child end signal handler
+    signal(SIGCHLD, clean_up_zombies);
 
     // Init server
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
