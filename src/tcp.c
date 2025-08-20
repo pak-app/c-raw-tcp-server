@@ -39,10 +39,8 @@ void bind_listen_server(int server_fd, struct sockaddr_in *server_addr, int port
     printf("Server listening on port %d...\n", port);
 }
 
-const char* convert_binary_ip_to_v4(struct sockaddr_in *client_addr) {
-    char ip_v4_string[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &(client_addr->sin_addr), ip_v4_string, INET_ADDRSTRLEN);
-    return ip_v4_string;
+static void convert_binary_ip_to_v4(struct sockaddr_in *client_addr, char *buffer, size_t buffer_len) {
+    inet_ntop(AF_INET, &(client_addr->sin_addr), buffer, buffer_len);
 }
 
 void client_handler(int server_fd, int client_fd, struct sockaddr_in *client_addr, int buff_size)
@@ -73,7 +71,8 @@ void client_handler(int server_fd, int client_fd, struct sockaddr_in *client_add
     {
 
         // Convert IP to string
-        const char client_ip_v4[] = convert_binary_ip_to_v4(client_addr); // buffer for IPv4 string
+        char client_ip_v4[INET_ADDRSTRLEN]; // buffer for IPv4 string
+        convert_binary_ip_to_v4(client_addr, client_ip_v4, sizeof(client_ip_v4));
 
         printf("Client %s connected!\n", client_ip_v4); // Log connected client
 
