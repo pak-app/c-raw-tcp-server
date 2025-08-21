@@ -11,6 +11,8 @@
 #define DEFAULT_PORT 8080           // default port number
 #define DEFAULT_HOST "localhost"    // default host name
 
+int buff_size;  // buffer size as global variable
+
 Socket client_socket;   // socket information (connected client ip)
 EventListeners event_listeners; // Event listeners function
 
@@ -21,7 +23,7 @@ static void DEFAULT_CLOSE_EVENT(){};        // close event default function (if 
 static void DEFAULT_END_EVENT(){};          // end event default function (if user didn't define this)
 
 
-void bind_listen_server(int server_fd, struct sockaddr_in *server_addr, int port)
+void bind_server(int server_fd, struct sockaddr_in *server_addr, int port)
 {
     // 1. Create socket
     if (server_fd < 0)
@@ -150,23 +152,25 @@ void set_event_listeners(
     event_listeners.close = close;
 }
 
-void server(const char *address, int port, int buff_size)
+void server(const char *address, int port, int buffer_size)
 {
 
     if (address == NULL)
         address = DEFAULT_HOST;
     if (port == 0)
         port = DEFAULT_PORT;
-    if (buff_size == 0)
-        buff_size = DEFAULT_BUF_SIZE;
+    if (buffer_size == 0)
+        buffer_size = DEFAULT_BUF_SIZE;
+
+    buff_size = buffer_size;
 
     event_listeners.close = DEFAULT_CLOSE_EVENT;
     event_listeners.end = DEFAULT_END_EVENT;
     event_listeners.on = DEFAULT_ON_EVENT;
     event_listeners.once = DEFAULT_ONCE_EVENT;
 
-    int server_fd, client_fd;
-    struct sockaddr_in server_addr, client_addr;
+    int server_fd;
+    struct sockaddr_in server_addr;
 
     // Setup child end signal handler
     signal(SIGCHLD, clean_up_zombies);
@@ -174,12 +178,16 @@ void server(const char *address, int port, int buff_size)
     // Init server
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
 
-    // Handle bind and listen server
-    bind_listen_server(server_fd, &server_addr, port);
+    // Handle server binding
+    bind_server(server_fd, &server_addr, port);
+}
 
-    // Main cleint connection and communication loop
-    while (1)
-    {
+void start_server(int server_fd)
+{
+    struct sockaddr_in client_addr;
+    int client_fd;
+
+    while(1) {
         client_handler(server_fd, client_fd, &client_addr, buff_size);
     }
 
