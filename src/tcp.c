@@ -163,7 +163,7 @@ void set_event_listeners(
     event_listeners.close = close;
 }
 
-void server(const char *address, int port, int buffer_size)
+int server(const char *address, int port, int buffer_size)
 {
 
     if (address == NULL)
@@ -191,6 +191,8 @@ void server(const char *address, int port, int buffer_size)
 
     // Handle server binding
     bind_server(server_fd, &server_addr, port);
+
+    return server_fd;
 }
 
 void start_server(int server_fd)

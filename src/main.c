@@ -20,7 +20,8 @@ void end() {
 int main()
 {
     set_event_listeners(once, on, close, end);
-    server("localhost", 8080, 1024);
+    int server_id = server("localhost", 8080, 1024);
+    start_server(server_id);
 
 	return 0;
 }

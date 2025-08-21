@@ -18,7 +18,7 @@ typedef struct
 }EventListeners;
 extern EventListeners event_listeners;
 
-void server(const char *address, int port, int buffer_size);
+int server(const char *address, int port, int buffer_size);
 void start_server(int server_fd);
 void bind_server(int server_fd, struct sockaddr_in *server_addr, int port);
 void communication_handler(int server_fd, int client_fd, struct sockaddr_in *client_addr, int buff_size);
