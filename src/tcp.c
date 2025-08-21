@@ -5,10 +5,21 @@
 #include <arpa/inet.h>      // sockaddr_in, inet_addr
 #include <signal.h>         // signal
 #include <sys/wait.h>
+#include "tcp.h"
 
-#define BUF_SIZE 1024       // default buffer size
-#define PORT 8080           // default port number
-#define HOST "localhost"    // default host name
+#define DEFAULT_BUF_SIZE 1024       // default buffer size
+#define DEFAULT_PORT 8080           // default port number
+#define DEFAULT_HOST "localhost"    // default host name
+
+Socket client_socket;   // socket information (connected client ip)
+EventListeners event_listeners; // Event listeners function
+
+
+static void DEFAULT_ONCE_EVENT(char *data){};     // once event default function (if user didn't define this)
+static void DEFAULT_ON_EVENT(char *data){};       // on event default function (if user didn't define this)
+static void DEFAULT_CLOSE_EVENT(){};        // close event default function (if user didn't define this)
+static void DEFAULT_END_EVENT(){};          // end event default function (if user didn't define this)
+
 
 void bind_listen_server(int server_fd, struct sockaddr_in *server_addr, int port)
 {
@@ -84,12 +95,13 @@ void client_handler(int server_fd, int client_fd, struct sockaddr_in *client_add
     {
 
         // Convert IP to string
-        char client_ip_v4[INET_ADDRSTRLEN]; // buffer for IPv4 string
-        convert_binary_ip_to_v4(client_addr, client_ip_v4, sizeof(client_ip_v4));
-
+        
+        // socket.remote_host = "localhost";
+        convert_binary_ip_to_v4(client_addr, client_socket.remote_host, sizeof(client_socket.remote_host));
+        
         close(server_fd);   // in child process there is no need to listening
 
-        printf("Client %s connected!\n", client_ip_v4); // Log connected client
+        printf("Client %s connected!\n", client_socket.remote_host); // Log connected client
 
         while (1)
         {
@@ -102,8 +114,9 @@ void client_handler(int server_fd, int client_fd, struct sockaddr_in *client_add
             if (bytes <= 0)
             {
                 close(client_fd);
-                printf("Client disconnected %s", client_ip_v4);
-                break;
+                printf("Client disconnected %s", client_socket.remote_host);
+                // break;
+                exit(1);    // exit
             }
 
             char *reply = "Hello from server\n"; // response message
@@ -112,7 +125,8 @@ void client_handler(int server_fd, int client_fd, struct sockaddr_in *client_add
             {
                 printf("Send operation failed and disconnect cleint %d", client_fd);
                 close(client_fd);
-                break;
+                // break;
+                exit(1);
             }
             buffer[bytes] = '\0';
             printf("Received: %s\n", buffer);
@@ -124,19 +138,35 @@ void client_handler(int server_fd, int client_fd, struct sockaddr_in *client_add
     }
 }
 
-void server(char *address, int port, int buff_size)
+void set_event_listeners(
+    void(*once)(char *),
+    void(*on)(char *),
+    void(*close)(),
+    void(*end)()
+) {
+    event_listeners.once = once;
+    event_listeners.on = on;
+    event_listeners.end = end;
+    event_listeners.close = close;
+}
+
+void server(const char *address, int port, int buff_size)
 {
 
     if (address == NULL)
-        address = HOST;
-    if (&port == NULL)
-        port = PORT;
-    if (&buff_size == NULL)
-        buff_size = BUF_SIZE;
+        address = DEFAULT_HOST;
+    if (port == 0)
+        port = DEFAULT_PORT;
+    if (buff_size == 0)
+        buff_size = DEFAULT_BUF_SIZE;
+
+    event_listeners.close = DEFAULT_CLOSE_EVENT;
+    event_listeners.end = DEFAULT_END_EVENT;
+    event_listeners.on = DEFAULT_ON_EVENT;
+    event_listeners.once = DEFAULT_ONCE_EVENT;
 
     int server_fd, client_fd;
     struct sockaddr_in server_addr, client_addr;
-
 
     // Setup child end signal handler
     signal(SIGCHLD, clean_up_zombies);
