@@ -21,13 +21,19 @@ extern EventListeners event_listeners;
 void server(const char *address, int port, int buffer_size);
 void start_server(int server_fd);
 void bind_server(int server_fd, struct sockaddr_in *server_addr, int port);
-void client_handler(int server_fd, int client_fd, struct sockaddr_in *client_addr, int buff_size);
+void communication_handler(int server_fd, int client_fd, struct sockaddr_in *client_addr, int buff_size);
 void set_event_listeners(
     void(*once)(char *),
     void(*on)(char *),
     void(*close)(),
     void(*end)()
 );
+
+void handle_once_event();
+void handle_on_event();
+void handle_close_event();
+void handle_end_event();
+
 // private functions
 static void convert_binary_ip_to_v4(struct sockaddr_in *client_addr, char *buffer, size_t buffer_len);
 static void clean_up_zombies(int signo);

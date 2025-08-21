@@ -23,6 +23,7 @@ static void DEFAULT_CLOSE_EVENT(){};        // close event default function (if 
 static void DEFAULT_END_EVENT(){};          // end event default function (if user didn't define this)
 
 
+
 void bind_server(int server_fd, struct sockaddr_in *server_addr, int port)
 {
     // 1. Create socket
@@ -71,7 +72,7 @@ static void convert_binary_ip_to_v4(struct sockaddr_in *client_addr, char *buffe
     inet_ntop(AF_INET, &(client_addr->sin_addr), buffer, buffer_len);
 }
 
-void client_handler(int server_fd, int client_fd, struct sockaddr_in *client_addr, int buff_size)
+void communication_handler(int server_fd, int client_fd, struct sockaddr_in *client_addr, int buff_size)
 {
 
     socklen_t addr_len = sizeof(*client_addr);
@@ -96,12 +97,14 @@ void client_handler(int server_fd, int client_fd, struct sockaddr_in *client_add
     if (pid_num == 0)
     {
 
+        close(server_fd);   // in child process there is no need to listening
         // Convert IP to string
-        
-        // socket.remote_host = "localhost";
         convert_binary_ip_to_v4(client_addr, client_socket.remote_host, sizeof(client_socket.remote_host));
         
-        close(server_fd);   // in child process there is no need to listening
+        // once event, get the first message from client
+        // This is before the communication loop
+        // where a client connected and send the first message
+
 
         printf("Client %s connected!\n", client_socket.remote_host); // Log connected client
 
@@ -115,16 +118,24 @@ void client_handler(int server_fd, int client_fd, struct sockaddr_in *client_add
             // handler cleint disconnection
             if (bytes <= 0)
             {
+                // this is end event
+                // client disconnected and should call end
+                // then close event.
+                // the close event is for releasing resources
                 close(client_fd);
                 printf("Client disconnected %s", client_socket.remote_host);
                 // break;
                 exit(1);    // exit
             }
+            // On event can implement and call here
+            // it is called and gets incoming data from user
 
             char *reply = "Hello from server\n"; // response message
             ssize_t send_status = send(client_fd, reply, strlen(reply), 0);
             if (send_status < 0)
             {
+                // this can be the end or error event
+                // these events can implement here
                 printf("Send operation failed and disconnect cleint %d", client_fd);
                 close(client_fd);
                 // break;
@@ -188,7 +199,7 @@ void start_server(int server_fd)
     int client_fd;
 
     while(1) {
-        client_handler(server_fd, client_fd, &client_addr, buff_size);
+        communication_handler(server_fd, client_fd, &client_addr, buff_size);
     }
 
     close(server_fd);
