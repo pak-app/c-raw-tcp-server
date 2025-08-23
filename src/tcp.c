@@ -17,12 +17,22 @@ Socket client_socket;   // socket information (connected client ip)
 EventListeners event_listeners; // Event listeners function
 
 
-static void DEFAULT_ONCE_EVENT(char *data){};     // once event default function (if user didn't define this)
-static void DEFAULT_ON_EVENT(char *data){};       // on event default function (if user didn't define this)
-static void DEFAULT_CLOSE_EVENT(){};        // close event default function (if user didn't define this)
+static void DEFAULT_ONCE_EVENT(char *data, int bytes){};     // once event default function (if user didn't define this)
+static void DEFAULT_ON_EVENT(char *data, int bytes){};       // on_data event default function (if user didn't define this)
+static void DEFAULT_CLOSE_EVENT(){};        // on_close event default function (if user didn't define this)
 static void DEFAULT_END_EVENT(){};          // end event default function (if user didn't define this)
 
 
+static ssize_t emit(int client_fd, const void *response, size_t response_len, int flag)
+{
+    ssize_t status = send(client_fd, response, sizeof(*response), flag);
+    if (status < 0) {
+        perror("emit function failed...");
+        exit(1);
+    }
+
+    return status;
+}
 
 void bind_server(int server_fd, struct sockaddr_in *server_addr, int port)
 {
@@ -72,11 +82,12 @@ static void convert_binary_ip_to_v4(struct sockaddr_in *client_addr, char *buffe
     inet_ntop(AF_INET, &(client_addr->sin_addr), buffer, buffer_len);
 }
 
-void communication_handler(int server_fd, int client_fd, struct sockaddr_in *client_addr, int buff_size)
+void communication_handler(int server_fd, struct sockaddr_in *client_addr)
 {
 
     socklen_t addr_len = sizeof(*client_addr);
     pid_t pid_num;
+    int client_fd;
     char buffer[buff_size];
 
     client_fd = accept(server_fd, (struct sockaddr *)client_addr, &addr_len);
@@ -84,6 +95,7 @@ void communication_handler(int server_fd, int client_fd, struct sockaddr_in *cli
     if (client_fd < 0)
     {
         perror("accept failed");
+        return;
     }
 
     pid_num = fork();
@@ -91,7 +103,7 @@ void communication_handler(int server_fd, int client_fd, struct sockaddr_in *cli
     if (pid_num < 0)
     {
         perror("Fork operation failed.");
-        return;
+        exit(1);
     }
 
     if (pid_num == 0)
@@ -104,9 +116,9 @@ void communication_handler(int server_fd, int client_fd, struct sockaddr_in *cli
         // once event, get the first message from client
         // This is before the communication loop
         // where a client connected and send the first message
-
-
-        printf("Client %s connected!\n", client_socket.remote_host); // Log connected client
+        // 1 ==> the client connected for the first time and send a first message(this usage is for auth, caching, and initialization)
+        // 0 ==> the client connected for the 
+        int once_event = 1;
 
         while (1)
         {
@@ -114,35 +126,29 @@ void communication_handler(int server_fd, int client_fd, struct sockaddr_in *cli
             // if the bytes variable is 0 it means the client disconnected
             // if it is more than 0, it received a data
             int bytes = recv(client_fd, buffer, buff_size - 1, 0);
-
+            printf("BYTES%d", bytes);
             // handler cleint disconnection
             if (bytes <= 0)
             {
+                close(client_fd);
                 // this is end event
                 // client disconnected and should call end
                 // then close event.
                 // the close event is for releasing resources
-                close(client_fd);
-                printf("Client disconnected %s", client_socket.remote_host);
-                // break;
-                exit(1);    // exit
+                printf("The client_fd\n");
+                event_listeners.on_close();
+                exit(0);    // exit code 0
             }
-            // On event can implement and call here
-            // it is called and gets incoming data from user
 
-            char *reply = "Hello from server\n"; // response message
-            ssize_t send_status = send(client_fd, reply, strlen(reply), 0);
-            if (send_status < 0)
-            {
-                // this can be the end or error event
-                // these events can implement here
-                printf("Send operation failed and disconnect cleint %d", client_fd);
-                close(client_fd);
-                // break;
-                exit(1);
+            if(once_event) {
+                event_listeners.once(buffer, bytes);
+                once_event = 0; // set once event to false because we got the first message and connection
             }
-            buffer[bytes] = '\0';
-            printf("Received: %s\n", buffer);
+            else {
+                // On event can implement and call here
+                // it is called and gets incoming data from user
+                event_listeners.on_data(buffer, bytes);
+            }
         }
         exit(0);
     }
@@ -152,15 +158,15 @@ void communication_handler(int server_fd, int client_fd, struct sockaddr_in *cli
 }
 
 void set_event_listeners(
-    void(*once)(char *),
-    void(*on)(char *),
-    void(*close)(),
-    void(*end)()
+    void(*once)(char *, int),
+    void(*on_data)(char *, int),
+    void(*on_close)(),
+    void(*on_end)()
 ) {
     event_listeners.once = once;
-    event_listeners.on = on;
-    event_listeners.end = end;
-    event_listeners.close = close;
+    event_listeners.on_data = on_data;
+    event_listeners.on_end = on_end;
+    event_listeners.on_close = on_close;
 }
 
 int server(const char *address, int port, int buffer_size)
@@ -175,10 +181,12 @@ int server(const char *address, int port, int buffer_size)
 
     buff_size = buffer_size;
 
-    event_listeners.close = DEFAULT_CLOSE_EVENT;
-    event_listeners.end = DEFAULT_END_EVENT;
-    event_listeners.on = DEFAULT_ON_EVENT;
+    event_listeners.on_close = DEFAULT_CLOSE_EVENT;
+    event_listeners.on_end = DEFAULT_END_EVENT;
+    event_listeners.on_data = DEFAULT_ON_EVENT;
     event_listeners.once = DEFAULT_ONCE_EVENT;
+
+    client_socket.emit = emit;  // set emit function for client socket
 
     int server_fd;
     struct sockaddr_in server_addr;
@@ -198,10 +206,9 @@ int server(const char *address, int port, int buffer_size)
 void start_server(int server_fd)
 {
     struct sockaddr_in client_addr;
-    int client_fd;
 
     while(1) {
-        communication_handler(server_fd, client_fd, &client_addr, buff_size);
+        communication_handler(server_fd, &client_addr);
     }
 
     close(server_fd);
