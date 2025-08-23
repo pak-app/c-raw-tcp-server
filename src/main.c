@@ -13,12 +13,12 @@ void once(char *data, int bytes)
     printf("[ONCE EVENT]: Received: %s\n", data);
 }
 
-void on_close()
+void on_close(void)
 {
     printf("[CLOSE EVENT]: client disconnected\n");
 }
 
-void end()
+void end(void)
 {
 }
 
@@ -31,14 +31,10 @@ typedef struct
 } Test;
 
 
-int main()
+int main(void)
 {
-    // int server_id = server("localhost", 8080, 1024);
-    // set_event_listeners(once, on, on_close, end);
-    // start_server(server_id);
-    Test t1 = {12, 's'};
-    Test t2 = {11, 'w'};
-    t2 = t1;
-    printf("MY T2 STRUCT:%d %c\n", t2.i, t2.h);
+    Socket* my_socket = server(1024);
+    start_server(my_socket, "localhost", 8080);
+
     return 0;
 }

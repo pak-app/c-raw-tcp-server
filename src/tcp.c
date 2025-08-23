@@ -2,31 +2,30 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <arpa/inet.h>      // sockaddr_in, inet_addr
-#include <signal.h>         // signal
+#include <arpa/inet.h> // sockaddr_in, inet_addr
+#include <signal.h>    // signal
 #include <sys/wait.h>
 #include "tcp.h"
 
-#define DEFAULT_BUF_SIZE 1024       // default buffer size
-#define DEFAULT_PORT 8080           // default port number
-#define DEFAULT_HOST "localhost"    // default host name
+#define DEFAULT_BUF_SIZE 1024    // default buffer size
+#define DEFAULT_PORT 8080        // default port number
+#define DEFAULT_HOST "localhost" // default host name
 
-int buff_size;  // buffer size as global variable
+int buff_size; // buffer size as global variable
 
-Socket client_socket;   // socket information (connected client ip)
+Socket client_socket;           // socket information (connected client ip)
 EventListeners event_listeners; // Event listeners function
 
+static void DEFAULT_ONCE_EVENT(char __attribute__((unused)) *data, int __attribute__((unused)) bytes) {}; // once event default function (if user didn't define this)
+static void DEFAULT_ON_EVENT(char __attribute__((unused)) *data, int __attribute__((unused)) bytes) {};   // on_data event default function (if user didn't define this)
+static void DEFAULT_CLOSE_EVENT(void) {};                     // on_close event default function (if user didn't define this)
+static void DEFAULT_END_EVENT(void) {};                       // end event default function (if user didn't define this)
 
-static void DEFAULT_ONCE_EVENT(char *data, int bytes){};     // once event default function (if user didn't define this)
-static void DEFAULT_ON_EVENT(char *data, int bytes){};       // on_data event default function (if user didn't define this)
-static void DEFAULT_CLOSE_EVENT(){};        // on_close event default function (if user didn't define this)
-static void DEFAULT_END_EVENT(){};          // end event default function (if user didn't define this)
-
-
-static ssize_t emit(int client_fd, const void *response, size_t response_len, int flag)
+static ssize_t emit(int client_fd, const void *response, int flag)
 {
     ssize_t status = send(client_fd, response, sizeof(*response), flag);
-    if (status < 0) {
+    if (status < 0)
+    {
         perror("emit function failed...");
         exit(1);
     }
@@ -65,12 +64,14 @@ void bind_server(int server_fd, struct sockaddr_in *server_addr, int port)
     printf("Server listening on port %d...\n", port);
 }
 
-static void clean_up_zombies(int signo) {
+static void clean_up_zombies(int __attribute__((unused)) signo)
+{
     int status;
     pid_t pid;
 
     // Keep reaping until no more finished children
-    while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0)
+    {
         // Use write() instead of printf() in signal handler
         char buf[100];
         int len = snprintf(buf, sizeof(buf), "Reaped child PID=%d\n", pid);
@@ -78,7 +79,8 @@ static void clean_up_zombies(int signo) {
     }
 }
 
-static void convert_binary_ip_to_v4(struct sockaddr_in *client_addr, char *buffer, size_t buffer_len) {
+static void convert_binary_ip_to_v4(struct sockaddr_in *client_addr, char *buffer, size_t buffer_len)
+{
     inet_ntop(AF_INET, &(client_addr->sin_addr), buffer, buffer_len);
 }
 
@@ -109,15 +111,15 @@ void communication_handler(int server_fd, struct sockaddr_in *client_addr)
     if (pid_num == 0)
     {
 
-        close(server_fd);   // in child process there is no need to listening
+        close(server_fd); // in child process there is no need to listening
         // Convert IP to string
         convert_binary_ip_to_v4(client_addr, client_socket.remote_host, sizeof(client_socket.remote_host));
-        
+
         // once event, get the first message from client
         // This is before the communication loop
         // where a client connected and send the first message
         // 1 ==> the client connected for the first time and send a first message(this usage is for auth, caching, and initialization)
-        // 0 ==> the client connected for the 
+        // 0 ==> the client connected for the
         int once_event = 1;
 
         while (1)
@@ -126,7 +128,7 @@ void communication_handler(int server_fd, struct sockaddr_in *client_addr)
             // if the bytes variable is 0 it means the client disconnected
             // if it is more than 0, it received a data
             int bytes = recv(client_fd, buffer, buff_size - 1, 0);
-            printf("BYTES%d", bytes);
+
             // handler cleint disconnection
             if (bytes <= 0)
             {
@@ -135,16 +137,18 @@ void communication_handler(int server_fd, struct sockaddr_in *client_addr)
                 // client disconnected and should call end
                 // then close event.
                 // the close event is for releasing resources
-                printf("The client_fd\n");
                 event_listeners.on_close();
-                exit(0);    // exit code 0
+
+                exit(0); // exit code 0
             }
 
-            if(once_event) {
+            if (once_event)
+            {
                 event_listeners.once(buffer, bytes);
                 once_event = 0; // set once event to false because we got the first message and connection
             }
-            else {
+            else
+            {
                 // On event can implement and call here
                 // it is called and gets incoming data from user
                 event_listeners.on_data(buffer, bytes);
@@ -152,47 +156,43 @@ void communication_handler(int server_fd, struct sockaddr_in *client_addr)
         }
         exit(0);
     }
-    else {
-        close(client_fd);   // in parent process there is no need to listen for client
+    else
+    {
+        close(client_fd); // in parent process there is no need to listen for client
     }
 }
 
-void set_event_listeners(
-    void(*once)(char *, int),
-    void(*on_data)(char *, int),
-    void(*on_close)(),
-    void(*on_end)()
-) {
-    event_listeners.once = once;
-    event_listeners.on_data = on_data;
-    event_listeners.on_end = on_end;
-    event_listeners.on_close = on_close;
+Socket *server(int buffer_size)
+{
+    if (buffer_size == 0)
+        buffer_size = DEFAULT_BUF_SIZE;
+
+    buff_size = buffer_size; // set buffer size
+    // Set defaults for events functions
+    client_socket.events.on_close = DEFAULT_CLOSE_EVENT;
+    client_socket.events.on_end = DEFAULT_END_EVENT;
+    client_socket.events.on_data = DEFAULT_ON_EVENT;
+    client_socket.events.once = DEFAULT_ONCE_EVENT;
+
+    client_socket.emit = emit; // set the send data function
+    // Setup child end signal handler
+    signal(SIGCHLD, clean_up_zombies); // set signal to clean up zombies process
+
+    return &client_socket;
 }
 
-int server(const char *address, int port, int buffer_size)
+void start_server(Socket *defined_socket, const char *address, int port)
 {
 
     if (address == NULL)
         address = DEFAULT_HOST;
     if (port == 0)
         port = DEFAULT_PORT;
-    if (buffer_size == 0)
-        buffer_size = DEFAULT_BUF_SIZE;
 
-    buff_size = buffer_size;
-
-    event_listeners.on_close = DEFAULT_CLOSE_EVENT;
-    event_listeners.on_end = DEFAULT_END_EVENT;
-    event_listeners.on_data = DEFAULT_ON_EVENT;
-    event_listeners.once = DEFAULT_ONCE_EVENT;
-
-    client_socket.emit = emit;  // set emit function for client socket
+    client_socket = *defined_socket;
 
     int server_fd;
-    struct sockaddr_in server_addr;
-
-    // Setup child end signal handler
-    signal(SIGCHLD, clean_up_zombies);
+    struct sockaddr_in server_addr, client_addr; // server and client addr contains clients information
 
     // Init server
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -200,16 +200,11 @@ int server(const char *address, int port, int buffer_size)
     // Handle server binding
     bind_server(server_fd, &server_addr, port);
 
-    return server_fd;
-}
-
-void start_server(int server_fd)
-{
-    struct sockaddr_in client_addr;
-
-    while(1) {
+    while (1)
+    {
         communication_handler(server_fd, &client_addr);
     }
 
     close(server_fd);
+    return;
 }
