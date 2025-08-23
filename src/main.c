@@ -34,6 +34,11 @@ typedef struct
 int main(void)
 {
     Socket* my_socket = server(1024);
+    my_socket->events.on_close = on_close;
+    my_socket->events.on_data = on;
+    my_socket->events.once = once;
+    my_socket->events.on_end = end;
+    
     start_server(my_socket, "localhost", 8080);
 
     return 0;

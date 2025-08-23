@@ -14,7 +14,6 @@
 int buff_size; // buffer size as global variable
 
 Socket client_socket;           // socket information (connected client ip)
-EventListeners event_listeners; // Event listeners function
 
 static void DEFAULT_ONCE_EVENT(char __attribute__((unused)) *data, int __attribute__((unused)) bytes) {}; // once event default function (if user didn't define this)
 static void DEFAULT_ON_EVENT(char __attribute__((unused)) *data, int __attribute__((unused)) bytes) {};   // on_data event default function (if user didn't define this)
@@ -74,8 +73,8 @@ static void clean_up_zombies(int __attribute__((unused)) signo)
     {
         // Use write() instead of printf() in signal handler
         char buf[100];
-        int len = snprintf(buf, sizeof(buf), "Reaped child PID=%d\n", pid);
-        write(STDOUT_FILENO, buf, len);
+        // int len = snprintf(buf, sizeof(buf), "Reaped child PID=%d\n", pid);
+        write(STDOUT_FILENO, buf, 0);
     }
 }
 
@@ -137,21 +136,21 @@ void communication_handler(int server_fd, struct sockaddr_in *client_addr)
                 // client disconnected and should call end
                 // then close event.
                 // the close event is for releasing resources
-                event_listeners.on_close();
+                client_socket.events.on_close();
 
                 exit(0); // exit code 0
             }
 
             if (once_event)
             {
-                event_listeners.once(buffer, bytes);
+                client_socket.events.once(buffer, bytes);
                 once_event = 0; // set once event to false because we got the first message and connection
             }
             else
             {
                 // On event can implement and call here
                 // it is called and gets incoming data from user
-                event_listeners.on_data(buffer, bytes);
+                client_socket.events.on_data(buffer, bytes);
             }
         }
         exit(0);
