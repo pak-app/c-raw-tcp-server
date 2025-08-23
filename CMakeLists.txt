@@ -15,3 +15,8 @@ set(SOURCES
 )
 
 add_executable(server ${SOURCES})
+
+# ✅ Add compiler warnings (shadowing, etc.)
+if (CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(server PRIVATE -Wall -Wextra -Wshadow -Wstrict-prototypes)
+endif()
