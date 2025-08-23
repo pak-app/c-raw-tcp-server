@@ -84,3 +84,6 @@ obj/
 
 # Windows
 Thumbs.db
+
+# Test
+manual_test
