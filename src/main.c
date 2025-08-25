@@ -1,24 +1,28 @@
 #include <stdio.h>
 #include "tcp.h"
 
-void on(char *data, int bytes)
+void on(Socket* c_socket, char *data, int bytes)
 {
     data[bytes] = '\0';
     printf("[ON EVENT]: Received: %s\n", data);
+    const char response[] = "Hello client!!!\n";
+    c_socket->emit(response, 0);
 }
 
-void once(char *data, int bytes)
+void once(Socket* c_socket, char *data, int bytes)
 {
     data[bytes] = '\0';
     printf("[ONCE EVENT]: Received: %s\n", data);
+    const char response[] = "Hello client for the first connection!!!\n";
+    c_socket->emit(response, 0);
 }
 
-void on_close(void)
+void on_close(__attribute__((unused)) Socket* c_socket)
 {
     printf("[CLOSE EVENT]: client disconnected\n");
 }
 
-void end(void)
+void end(__attribute__((unused)) Socket* c_socket)
 {
 }
 

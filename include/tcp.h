@@ -3,8 +3,10 @@
 #ifndef TCP_H
 #define TCP_H
 
-typedef void (*close_connection_event) (void);  // for end and close connection event
-typedef void (*on_data_event) (char*, int); // type of on_data and once_data handler
+struct Socket;
+
+typedef void (*close_connection_event) (struct Socket*);  // for end and close connection event
+typedef void (*on_data_event) (struct Socket*, char*, int); // type of on_data and once_data handler
 
 typedef struct
 {
@@ -17,10 +19,11 @@ typedef struct
 
 extern EventListeners event_listeners;
 
-typedef struct {
+typedef struct Socket {
     char remote_host[INET_ADDRSTRLEN];
-    ssize_t (*emit)(int client_fd, const void *response, int flag);
+    ssize_t (*emit)(const void *response, int flag);
     EventListeners events;
+    int client_fd;
     
 } Socket;
 extern Socket client_socket;   // declaration (no memory allocated here)

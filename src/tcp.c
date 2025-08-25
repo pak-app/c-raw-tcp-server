@@ -15,14 +15,15 @@ int buff_size; // buffer size as global variable
 
 Socket client_socket;           // socket information (connected client ip)
 
-static void DEFAULT_ONCE_EVENT(char __attribute__((unused)) *data, int __attribute__((unused)) bytes) {}; // once event default function (if user didn't define this)
-static void DEFAULT_ON_EVENT(char __attribute__((unused)) *data, int __attribute__((unused)) bytes) {};   // on_data event default function (if user didn't define this)
-static void DEFAULT_CLOSE_EVENT(void) {};                     // on_close event default function (if user didn't define this)
-static void DEFAULT_END_EVENT(void) {};                       // end event default function (if user didn't define this)
+static void DEFAULT_ONCE_EVENT(Socket*, char __attribute__((unused)) *data, int __attribute__((unused)) bytes) {} // once event default function (if user didn't define this)
+static void DEFAULT_ON_EVENT(Socket*, char __attribute__((unused)) *data, int __attribute__((unused)) bytes) {}   // on_data event default function (if user didn't define this)
+static void DEFAULT_CLOSE_EVENT(Socket*) {}                     // on_close event default function (if user didn't define this)
+static void DEFAULT_END_EVENT(Socket*) {}                       // end event default function (if user didn't define this)
 
-static ssize_t emit(int client_fd, const void *response, int flag)
+static ssize_t emit(const void *response, int flag)
 {
-    ssize_t status = send(client_fd, response, sizeof(*response), flag);
+    int len = strlen(response);
+    ssize_t status = send(client_socket.client_fd, response, len, flag);
     if (status < 0)
     {
         perror("emit function failed...");
@@ -109,7 +110,7 @@ void communication_handler(int server_fd, struct sockaddr_in *client_addr)
 
     if (pid_num == 0)
     {
-
+        client_socket.client_fd = client_fd; // set client file descriptor for client socket
         close(server_fd); // in child process there is no need to listening
         // Convert IP to string
         convert_binary_ip_to_v4(client_addr, client_socket.remote_host, sizeof(client_socket.remote_host));
@@ -136,21 +137,21 @@ void communication_handler(int server_fd, struct sockaddr_in *client_addr)
                 // client disconnected and should call end
                 // then close event.
                 // the close event is for releasing resources
-                client_socket.events.on_close();
+                client_socket.events.on_close(&client_socket);
 
                 exit(0); // exit code 0
             }
 
             if (once_event)
             {
-                client_socket.events.once(buffer, bytes);
+                client_socket.events.once(&client_socket, buffer, bytes);
                 once_event = 0; // set once event to false because we got the first message and connection
             }
             else
             {
                 // On event can implement and call here
                 // it is called and gets incoming data from user
-                client_socket.events.on_data(buffer, bytes);
+                client_socket.events.on_data(&client_socket, buffer, bytes);
             }
         }
         exit(0);
