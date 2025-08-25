@@ -24,6 +24,7 @@ void on_close(__attribute__((unused)) Socket* c_socket)
 
 void end(__attribute__((unused)) Socket* c_socket)
 {
+    printf("[END EVENT] end called.\n");
 }
 
 

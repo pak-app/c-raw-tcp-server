@@ -33,6 +33,20 @@ static ssize_t emit(const void *response, int flag)
     return status;
 }
 
+static void end(void) {
+    client_socket.events.on_end(&client_socket);    // on end event called (send last messages)
+    shutdown(client_socket.client_fd, SHUT_WR);     // graceful shutdown (send fin packet client by kernel)
+    close(client_socket.client_fd);                 // close connection
+    client_socket.events.on_close(&client_socket);  // call on close event to release resources
+    exit(0);
+}
+
+static void destroy(void) {
+    close(client_socket.client_fd);                 // close connection
+    client_socket.events.on_close(&client_socket);  // call on close event to release resources
+    exit(0);
+}
+
 void bind_server(int server_fd, struct sockaddr_in *server_addr, int port)
 {
     // 1. Create socket
@@ -130,6 +144,7 @@ void communication_handler(int server_fd, struct sockaddr_in *client_addr)
             int bytes = recv(client_fd, buffer, buff_size - 1, 0);
 
             // handler cleint disconnection
+            // it could set a timer to close connection
             if (bytes <= 0)
             {
                 close(client_fd);
@@ -137,9 +152,7 @@ void communication_handler(int server_fd, struct sockaddr_in *client_addr)
                 // client disconnected and should call end
                 // then close event.
                 // the close event is for releasing resources
-                client_socket.events.on_close(&client_socket);
-
-                exit(0); // exit code 0
+                client_socket.end();    // greceful end event
             }
 
             if (once_event)
@@ -175,6 +188,8 @@ Socket *server(int buffer_size)
     client_socket.events.once = DEFAULT_ONCE_EVENT;
 
     client_socket.emit = emit; // set the send data function
+    client_socket.end = end;    // set the end connection function
+    client_socket.destroy = destroy; // set the destroy connection function
     // Setup child end signal handler
     signal(SIGCHLD, clean_up_zombies); // set signal to clean up zombies process
 

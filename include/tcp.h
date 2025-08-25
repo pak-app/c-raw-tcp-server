@@ -24,6 +24,8 @@ typedef struct Socket {
     ssize_t (*emit)(const void *response, int flag);
     EventListeners events;
     int client_fd;
+    void (*end)(void);
+    void (*destroy)(void);
     
 } Socket;
 extern Socket client_socket;   // declaration (no memory allocated here)
