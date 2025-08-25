@@ -37,7 +37,7 @@ Compile the server:
 gcc src/main.c src/tcp.c -I include -o tcp_server
 ```
 
-Run the server:
+Compile and run the server:
 ```bash
 ./tcp_server
 ```
