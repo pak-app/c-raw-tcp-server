@@ -132,7 +132,7 @@ int main(void)
 ## 🧪 Test with `netcat`
 On a second terminal, run:
 ```bash
-nc localhost 8080
+nc -v localhost 8080
 ```
 You should see the server respond according to your event handlers.
 
