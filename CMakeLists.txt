@@ -11,6 +11,7 @@ include_directories(include)
 set(SOURCES
     src/main.c
     src/tcp.c
+    src/utils.c
 )
 
 add_executable(server ${SOURCES})
