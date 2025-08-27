@@ -30,6 +30,15 @@ typedef struct Socket {
 } Socket;
 extern Socket client_socket;   // declaration (no memory allocated here)
 
+typedef struct
+{
+    /* data */
+    char *blacklist[INET_ADDRSTRLEN];
+    int (*set_ip)(BlackList*, char [INET_ADDRSTRLEN]);
+    int (*remove_ip)(BlackList*, char [INET_ADDRSTRLEN]);
+} BlackList;
+extern BlackList black_list_ips;
+
 Socket* server(int buffer_size);
 void start_server(Socket *socket, const char *address, int port);
 void bind_server(int server_fd, struct sockaddr_in *server_addr, int port);

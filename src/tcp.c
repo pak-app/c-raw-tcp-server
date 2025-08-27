@@ -15,6 +15,7 @@ int buff_size; // buffer size as global variable
 
 Socket client_socket;           // socket information (connected client ip)
 
+static char **black_list_ips = {NULL}; // setup balcklist IPs to null
 static void DEFAULT_ONCE_EVENT(Socket*, char __attribute__((unused)) *data, int __attribute__((unused)) bytes) {} // once event default function (if user didn't define this)
 static void DEFAULT_ON_EVENT(Socket*, char __attribute__((unused)) *data, int __attribute__((unused)) bytes) {}   // on_data event default function (if user didn't define this)
 static void DEFAULT_CLOSE_EVENT(Socket*) {}                     // on_close event default function (if user didn't define this)
@@ -128,7 +129,7 @@ void communication_handler(int server_fd, struct sockaddr_in *client_addr)
         close(server_fd); // in child process there is no need to listening
         // Convert IP to string
         convert_binary_ip_to_v4(client_addr, client_socket.remote_host, sizeof(client_socket.remote_host));
-
+        printf("Size of IP address: %s %lu\n", client_socket.remote_host, sizeof(client_socket.remote_host));
         // once event, get the first message from client
         // This is before the communication loop
         // where a client connected and send the first message
